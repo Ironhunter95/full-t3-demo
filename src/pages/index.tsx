@@ -8,6 +8,7 @@ import relativeTime from "dayjs/plugin/relativeTime";
 dayjs.extend(relativeTime);
 import { api, type RouterOutputs } from "~/utils/api";
 import Image from "next/image";
+import { LoadingPage } from "~/components/loading";
 
 const CreatePostWizard = () => {
   const { user } = useUser();
@@ -53,11 +54,25 @@ const PostView = (props: PostWithUser) => {
     </div>
   );
 };
+
+const Feed = () => {
+  const { data, isLoading: postsLoading } = api.posts.getAll.useQuery();
+  if (postsLoading) return <LoadingPage />;
+  if (!data) return <div>Something went wront</div>;
+  return (
+    <div className="flex flex-col">
+      {data?.map((fullPost) => (
+        <PostView {...fullPost} key={fullPost.post.id} />
+      ))}
+    </div>
+  );
+};
 const Home: NextPage = () => {
-  const user = useUser();
-  const { data, isLoading } = api.posts.getAll.useQuery();
-  if (isLoading) return <div>Loading...</div>;
-  if (!data) return <div>Something went wrong...</div>;
+  const { isLoaded: userLoaded, isSignedIn } = useUser();
+  //Used to start fetching asap since with react query you can fetch twice and if it the same it will use the cached data
+  api.posts.getAll.useQuery();
+  if (!userLoaded) return <div></div>;
+
   return (
     <>
       <Head>
@@ -68,20 +83,15 @@ const Home: NextPage = () => {
       <main className="flex justify-center">
         <div className="h-screen w-full border-x border-slate-400 md:max-w-2xl">
           <div className="flex border-b  p-4">
-            {!user.isSignedIn && (
+            {!isSignedIn && (
               <div className="flex justify-center">
                 <SignInButton />
               </div>
             )}
-            {user.isSignedIn && <CreatePostWizard />}
+            {isSignedIn && <CreatePostWizard />}
           </div>
-          <div className="flex flex-col">
-            {data?.map((fullPost) => (
-              <PostView {...fullPost} key={fullPost.post.id} />
-            ))}
-          </div>
+          <Feed />
         </div>
-        {/* <SignIn path="/sign-in" routing="path" signUpUrl="/sign-up" /> */}
       </main>
     </>
   );
